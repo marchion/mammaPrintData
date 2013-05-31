@@ -1,0 +1,16 @@
+Package: mammaPrintData
+Type: Package
+Title: RGLists from the Glas and Buyse breast cancer
+      studies
+Version: 0.99.7
+Date: 2013-05-13
+Description: Gene expression data for the two breast cancer cohorts published by Glas and Buyse in 2006
+biocViews: ExperimentData, Cancer, RNAExpressionData
+Author: Luigi Marchionni <marchion@jhu.edu>
+Maintainer: Luigi Marchionni <marchion@jhu.edu>
+Depends: R (>= 2.13.0)
+Suggests: Biobase, gdata, limma
+License: Artistic-2.0
+URL: http://genomics.jhu.edu/marchion/breastTSP.html
+LazyLoad: yes
+Packaged: 2013-05-14 01:56:09 UTC; marchion

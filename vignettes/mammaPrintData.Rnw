@@ -1,0 +1,1199 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Luigi Marchionni
+%% May 12 2013
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \VignetteIndexEntry{Working with the mammaPrintData package}
+% \VignetteDepends{Biobase, limma, gdata}
+% \VignetteKeywords{ExperimentData, Cancer, RNAExpressionData}
+% \VignettePackage{mammaPrintData}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%% Begin Document
+\documentclass[11pt]{article}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%% Preamble
+\usepackage{setspace}
+
+%% For graphics, fonts, figures
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsxtra}
+
+%% For graphics, fonts, figures
+\usepackage{graphicx, helvet, comment, color}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{wrapfig, subfigure}
+\usepackage{vmargin}
+\usepackage{picinpar, fancyhdr} 
+\usepackage{epsfig}
+\usepackage{epstopdf}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{authblk}
+
+%% to control floats
+\usepackage{float} 
+
+%% Set margins
+\usepackage{geometry} 
+
+%% Activate to begin paragraphs with an empty line
+\usepackage[parfill]{parskip}
+
+%% to make Celsius
+\usepackage{textcomp}
+
+%% For bibliography
+\usepackage{natbib}
+
+%% For URLs formatting
+\usepackage{url}
+
+%%to make hyperlink to html
+\usepackage{hyperref}
+%\usepackage[dvips, colorlinks=true]{hyperref}
+
+%% For long table floating across pages
+\usepackage{longtable}
+
+%% For page orientation
+\usepackage{lscape}
+
+%%% additional packages
+\usepackage{Sweave}
+
+%%% Sweave option
+\SweaveOpts{keep.source=TRUE}
+
+%%% Document layout
+\parindent 0in
+\setpapersize{USletter} 
+\setmarginsrb{0.75truein}{0.5truein}{0.75truein}{0.5truein}{16pt}{30pt}{0pt}{20truept}
+\setlength{\emergencystretch}{2em}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% New commands for R stuff
+\newcommand{\R}{{\texttt{R}}}
+\newcommand{\Bioc}{{\texttt{Bioconductor}}}
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\texttt{#1}}}
+\newcommand{\Rclass}[1]{{\texttt{#1}}}
+\newcommand{\Rmethod}[1]{{\texttt{#1}}}
+\newcommand{\Rfunarg}[1]{{\texttt{#1}}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% fancy Sweave
+\DefineVerbatimEnvironment{Sinput}{Verbatim}{xleftmargin=1em,fontshape=sl,formatcom=\color{MidnightBlue}}
+%\DefineVerbatimEnvironment{Sinput}{Verbatim} {xleftmargin=1em}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=1em,fontshape=sl,formatcom=\color{OliveGreen}}
+%\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=1em}
+\DefineVerbatimEnvironment{Scode}{Verbatim}{xleftmargin=1em,fontshape=sl,formatcom=\color{BrickRed}}
+%\DefineVerbatimEnvironment{Scode}{Verbatim}{xleftmargin=1em}
+\fvset{listparameters={\setlength{\topsep}{0pt}}}
+\renewenvironment{Schunk}{\vspace{\topsep}}{\vspace{\topsep}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%% Title
+\title{The mammaPrintData package: annotated gene expression data from the 
+  Glas and Buyse breast cancer cohorts}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Authors and Affiliations
+\author[1]{Luigi Marchionni}
+\affil[1]{The Sidney Kimmel Comprehensive Cancer Center, Johns Hopkins University School of Medicine}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Document
+\begin{document}
+
+\singlespacing
+\maketitle
+\tableofcontents
+
+\newpage
+
+<<start, eval=TRUE, echo=FALSE, cache=FALSE>>=
+### setCacheDir("cacheSweave")
+### if (! file.exists("./cacheSweave") ) {
+### 	dir.create("./cacheSweave")
+### }
+### setCacheDir("cacheSweave")
+options(width=75)
+options(continue=" ")
+rm(list=ls())
+myDate <- format(Sys.Date(), "%b %d, %Y")
+@ 
+
+\section{Overview}
+
+This vignette documents the {\R} code used to retrieve from the original sources, 
+annotate, and then assemble into separate \Rclass{RGList} instances
+the gene expression data of the Glas and Buyse cohorts \cite{Glas2006,Buyse2006}.
+Such data was used to translate the 70-gene breast cancer prognostic 
+signature \cite{van't2002,Vijver2002} into the MammaPrint assays \cite{Glas2006},
+and to independently validate it \cite{Buyse2006}.
+While the original studies by van't Veer and Van de Vijver and colleagues
+used the two-colors Agilent/Rosetta 24k array,
+the redeveloped assays is based on the 1.9k MammaPrint array.
+For a compete review of these breast cancer studies see 
+Marchionni et al  \cite{Marchionni2007b,Marchionni2008a}.
+
+Briefly, this document contains the complete {\R} code used to:
+\begin{enumerate}
+   \item Download the following gene expression data from ArrayExpress \cite{Brazma2003}:
+   \begin{enumerate}
+      \item The Glas data set (ArrayExpress E-TABM-115 series), which combined a large 
+        proportion of cases from the original van't Veer and Van de Vijver cohorts,
+        and was used as training set; 
+      \item The Buyse data set (ArrayExpress  E-TABM-77), which analyzed
+        a European multicenter cohort, and was used as validation set; 
+   \end{enumerate}
+  \item Pre-process and normalize all gene expression data;
+  \item Cross-reference the 70-gene list to the new MammaPrint microarray;
+  \item Create  the corresponding \Rpackage{limma} package \Rclass{RGList} instances.
+\end{enumerate}    
+
+All the files, among those mentioned above, needed to compile this vignette
+and create the \Rpackage{mammaPrintData} \R package are included
+inside the \texttt{inst/extdata} directory of the source package.
+
+Finally, the {\R} code chunk below was used todownload and install 
+from \Bioc the packages required to prepared the present vignette.
+if the are not available (e.g \Rpackage{gdata}).
+
+<<getPackagesBioc, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Get the list of available packages
+installedPckgs <- installed.packages()[,"Package"]
+###Define the list of desired libraries
+pckgListBIOC <- c("Biobase", "limma", "gdata")
+###Source the biocLite.R script from Bioconductor
+source("http://bioconductor.org/biocLite.R")
+###Load the packages, install them from Bioconductor if needed
+for (pckg in pckgListBIOC) {
+	if (! pckg %in% installedPckgs) biocLite(pckg)
+	require(pckg, character.only=TRUE)
+}
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The 70-gene signature}
+
+The list of genes originally identified in the van't Veer study \cite{van't2002}
+can be obtained from the 
+\href{http://www.nature.com/nature/journal/v415/n6871/suppinfo/415530a.html}
+{supplementary data section} of the original publication, at the following URL:
+\begin{itemize}
+  \item \url{http://www.nature.com/nature/journal/v415/n6871/extref/415530a-s9.xls}
+\end{itemize} 
+The Excel spreadsheet named \texttt{415530a-s9.xls} corresponds to
+Table S2, and contains the identifiers and annotation for the 231 genes 
+othat proved to be associated with metastatic recurrence at 5 years. 
+According to the information contained in the legend for Table S2
+(\href{http://www.nature.com/nature/journal/v415/n6871/extref/415530a-s7.doc}
+{see``Supplementary Methods'' section})
+the optimal set of genes constituting the 70-gene signature can be identified
+from this table by selecting the top 70 features/reporters with highest 
+absolute correlation coefficients.
+
+Below is shown the code chunk used to download the \texttt{415530a-s9.xls} 
+Excel file from the Nature website. This file was part of the Supplementary 
+Information section associated with the original  van't Veer's et manuscript.
+The following code chunk was not run to compile this vignette, which was prepared
+using the local copies of the data stored in the \texttt{inst/extdata} directory.
+
+<<get70genes, eval=FALSE, echo=TRUE, cache=FALSE>>=
+###Create a working directory
+dir.create("../extdata/seventyGenes", showWarnings = TRUE, recursive = TRUE)
+###Define the url for Supplementary data on the Nature Website
+url <- "http://www.nature.com/nature/journal/v415/n6871/extref/415530a-s9.xls"
+###Dowload the Excel file from Nature
+download.file(url, destfile="../extdata/seventyGenes/415530a-s9.xls",
+	      quiet = FALSE, mode = "w", cacheOK = TRUE)
+@
+
+Below is the {\R} code chunk used to directly process the \texttt{415530a-s9.xls}
+Excel file and create the corresponding data.frame containing the features annotation.
+
+<<read70genes, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Load the library to process Excell files
+require(gdata)
+###Read the Excel file with the 70-genes signature information for van't Veer dataset
+myFile <- system.file("extdata/seventyGene", "415530a-s9.xls", 
+		      package = "mammaPrintData")
+gns231 <- read.xls(myFile, skip=0, header=TRUE, stringsAsFactors=FALSE)
+###Remove special characters in the colums header
+###These are due to white spaces present in the Excel file
+colnames(gns231) <- gsub("\\.\\.", "", colnames(gns231))
+###Remove GO annotation
+gns231 <- gns231[, -grep("sp_xref_keyword_list", colnames(gns231))]
+###Check the structure of the data.frame
+str(gns231)
+@ 
+
+Below is the {\R} code chunk used to generate a list of identifiers corresponding to
+the 70-gene and the 231-gene lists.
+
+<<read70genes2, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Reorder the genes in decreasing order by absolute correlation
+gns231 <- gns231[order(abs(gns231$correlation), decreasing=TRUE),]
+###Select the feature identifiers corresponding to the top 70 genes
+gns70 <- gns231[1:70,]
+###Create a list of features and gene symbols for later use
+progSig <- list(gns231acc = unique(gns231$accession), gns231name = unique(gns231$gene.name),
+		gns231any = unique(c(gns231$accession, gns231$gene.name)),
+		gns70acc = unique(gns70$accession), gns70name = unique(gns70$gene.name),
+		gns70any = unique(c(gns70$accession, gns70$gene.name)) )
+###Remove empty elements
+progSig <- lapply(progSig, function(x) x[x!=""])
+###Create a data.frame of correlations with combined accession 
+###and gene symbols as identifiers
+gns231Cors <- data.frame(stringsAsFactors=FALSE,
+			 ID=c(gns231$gene.name[ gns231$gene.name %in% progSig$gns231any ], 
+			 gns231$accession),
+			 gns231Cors=c(gns231$correlation[ gns231$gene.name %in% progSig$gns231any ], 
+			 gns231$correlation) )
+####Keep unique only
+progSig$gns231Cors <- gns231Cors[!duplicated(gns231Cors$ID), ]
+progSig$gns231Cors <- gns231Cors[gns231Cors$ID != "", ]
+###Check the structure of the list just created
+str(progSig)
+@ 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Glas and Buyse cohorts: \Rclass{RGList} preparation}
+
+The original data sets used to redevelop \cite{Glas2006} and validate \cite{Buyse2006}
+the MammaPrint assays can be obtained from the ArrayEpress database \cite{Brazma2003}:
+\begin{itemize}
+  \item \url{http://www.ebi.ac.uk/arrayexpress/experiments/E-TABM-77}
+  \item \url{http://www.ebi.ac.uk/arrayexpress/experiments/E-TABM-115}
+\end{itemize}    
+
+These gene expression series account for clinical information, microarray feature annotation,
+and complete unprocessed raw gene expression data.
+In both studies a two-color design with dye-swap replication was applied,
+therefore two distinct \Rclass{RGList} objects were prepared for each data set,
+and included in the \Rpackage{mammaPrintData} {\R-\Bioc} package, as detailed below.
+The pre-processed, normalized, and summarized values used by the authors in their
+original analyses were not included in the submission to ArrayExpress, hence
+data pre-processing and normalization of the \Rclass{RGList} contained
+in this package is required prior any analysis.
+
+\subsection{Glas cohort - ArrayExpress E-TABM-115 Series}
+
+The Glas data set combines a large proportion of cases from the original van't Veer
+and Van de Vijver cohorts, and was used for the implementation of the
+original 70-gene signature into the MammaPrint assay \cite{Glas2006}.
+
+The following chunk of {\R} code was used to download the
+all the files of the ArrayExpress the E-TABM-115 series.
+The files needed to compile this vignette
+and create the \Rpackage{mammaPrintData} \R package are included
+inside the \texttt{inst/extdata} directory.
+
+<<getETAB115, eval=FALSE, echo=TRUE, cache=FALSE>>=
+###Load the ArrayExpress library
+require(ArrayExpress)
+###Create a working directory
+dir.create("../extdata/ETABM115", showWarnings = FALSE)
+###Obtain the data package E-TABM-115 from ArrayExpress
+etabm115 <- getAE("E-TABM-115", type = "full", path="../extdata/ETABM115", extract=FALSE)
+###Save
+save(etabm115, file="../extdata/ETABM115/etabm115.rda")
+@ 
+
+Below is the {\R} code chunk used to process the phenotypic information
+retrieved form ArrayExpress and associated with the E-TABM-115 series
+on \Sexpr{print(myDate)}
+
+<<readETAB115pheno, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Load the Biobase library
+require(Biobase)
+###List the files obtained from ArrayExpress
+etabm155filesLoc <- system.file("extdata/ETABM115", package = "mammaPrintData")
+dir(etabm155filesLoc)
+###Read the phenotypic information from "E-TABM-115.sdrf.txt" 
+targets <- read.table(dir(etabm155filesLoc, full.names=TRUE, pattern="E-TABM-115.sdrf.txt"),
+		      comment.char="", sep="\t", header=TRUE, stringsAsFactors=FALSE)
+###Check and process the phenotypic information: keep non-redundant information
+targets <- targets[, apply(targets, 2, function(x) length(unique(x)) != 1 )]
+###Reorder by file name
+targets <- targets[order(targets$Array.Data.File, decreasing=TRUE),]
+###Remove points in colnames
+colnames(targets) <- gsub("\\.$","",gsub("\\.\\.",".",colnames(targets)))
+###Show the available phenotypic iformation
+str(targets)
+@ 
+
+
+The Glas cohort accounts for 162 unique cases, which were analyzed 
+using a dye-swap two-colors design, comparing each sample against 
+the same reference RNA.
+According to ArrayEspress instruction for SDRF files
+(available at \url{http://tab2mage.sourceforge.net/docs/magetab_docs.html}),
+a complete SDRF annotation file consists of a table in which 
+each hybridization channel is represented by an individual row.
+Therefore the complete SDRF annotation files for all hybridizations
+of the Glas cohort should for 648 total rows:
+162 samples for 2 channels (cy5 and Cy3) for 2 replicated hybridizations (dye-swap).
+As shown below, the \texttt{E-TABM-115.sdrf.txt} file
+currently available from ArrayExpress (\Sexpr{print(myDate)})
+is incomplete, since it contains only \Sexpr{print(nrow(targets))} rows.
+An inspection of the information contained in the downloaded SDRF file
+reveales that it contains a row for each hybridization (n=\Sexpr{print(nrow(targets))}),
+rather than a row for each channel (n=\Sexpr{print(nrow(targets)*2)}).
+
+<<checkETAB115sdrf, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Check targets data.frame dimentions
+dim(targets)
+###Count the unique file names
+length(unique(targets$Array.Data.File))
+###Count the number of rows associated with each channel
+table(CHANNEL=targets$Label)
+###Count the number of rows for the reference RNA (named "MRP") in each channel
+table(CHANNEL=targets$Label, REFERENCE=targets$Sample.Name == "MRP")
+###Count the number of distinct RNA analyzed (excluding the refernce RNA)
+sum(REFERENCE=targets$Sample.Name!="MRP")
+###Count the number of metastatic events
+table(METASTASES=targets$Characteristics.EventDistantMetastases)
+###Count the number of rown for which metastatic events is missing
+table(MISSING=is.na(targets$Characteristics.EventDistantMetastases))
+###Check if missing clinical information is exactly associated with
+###hybridizations where the "MRP" reference RNA was used in the Cy5 channel
+table(MISSING=is.na(targets$Characteristics.EventDistantMetastases),
+      REFERENCE=targets$Sample.Name!="MRP")
+@ 
+
+Therefore the following conclusions can be drawn from the evaluation
+of the information contained in \texttt{E-TABM-115.sdrf.txt} file 
+shown above:
+\begin{itemize}
+  \item All hybridizations that were performed have a corresponding 
+    row in the SDRF table;
+  \item Half of the rows of the SDRF table, for which the RNA samples described
+    were associated with the Cy5 channel, contain a complete set of clinical
+    information;
+  \item The other half of the rows, for which the RNA samples described
+    were associated with the Cy3 channel, report the information for
+    the reference RNA, and the clinical information is missing;
+  \item Nevertheless, given the dye swap design of the experiment,
+    the SDRF table contains the complete clinical information associated 
+    with all the 162 breast cancer patients analyzed in the Glas study;
+  \item It is possible to use the clinical information provided only
+    with one  set of  dye-swap hybridizations, since for the other set 
+    ony the ``MRP'' reference RNA information was provided.
+\end{itemize}
+
+In conclusion, the complete data set can be analyzed only 
+knowing which hybridizations constitute a dye-swap pair.
+This information can be obtained upon request from 
+Dr. Glas, the corrisponding author of the of the original study.
+
+Below is the {\R} code chunk used to create the \Rclass{RGList} objects
+using the raw gene expression data contained in the compressed 
+archive \texttt{E-TABM-115.raw.1.zip} downloaded from ArrayExpress.
+
+<<ETAB115rglist, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Create a target directory where the raw data files wil be extracted from the archive
+myTmpDirEtabm115 <- paste(etabm155filesLoc, "/tmp", sep="")
+dir.create(myTmpDirEtabm115)
+###Extract the files in the temporary directory
+unzip(dir(etabm155filesLoc, full.names=TRUE, pattern="E-TABM-115.raw.1.zip"), 
+      exdir = myTmpDirEtabm115)
+###Check whether all files extracted correspond to the targets$Array.Data.File
+all(targets$Array.Data.File %in% dir(myTmpDirEtabm115))
+###Load the required library
+require(limma)
+###Define the columns which will be read from the raw files selection
+colsList <- list(Rf="Feature Extraction Software:rMedianSignal",
+		 Rb="Feature Extraction Software:rBGMedianSignal",
+		 Gf="Feature Extraction Software:gMedianSignal",
+		 Gb="Feature Extraction Software:gBGMedianSignal",
+		 logRatio="Feature Extraction Software:LogRatio",
+		 logRatioError="Feature Extraction Software:LogRatioError")
+###Subset the targets data.frame for the hybridization in which the Reference RNA was labeled with Cy3
+targetsCy3info <- targets[ targets$Source.Name == "MRP" & targets$Label == "Cy3", ]
+dim(targetsCy3info)
+###Subset the targets data.frame for the hybridization in which the Reference RNA was labeled with Cy5
+targetsCy5info <- targets[ targets$Source.Name != "MRP" & targets$Label == "Cy5", ]
+dim(targetsCy5info)
+###The two sets of hybridizations above should be mutually exclusive
+all(targetsCy3info$Array.Data.File != targetsCy5info$Array.Data.File)
+###Create an "RGList" using specific columns for the first set of swapped hybridizations:
+RGcy3 <- read.maimages(targetsCy3info$Array.Data.File, source="generic", 
+		       columns=colsList, annotation="Reporter identifier",
+		       path=myTmpDirEtabm115, verbose=FALSE)
+###Add targets information
+RGcy3$targets <- targetsCy3info
+###Format Reporter identifiers
+RGcy3$genes$ID <- gsub(".+A-MEXP-318\\.", "", RGcy3$genes[, "Reporter identifier"])
+###Check dimensions
+dim(RGcy3)
+###Create an "RGList" using specific columns for the second set of swapped hybridizations:
+RGcy5 <- read.maimages(targetsCy5info$Array.Data.File, source="generic",
+		       columns=colsList, annotation="Reporter identifier",
+		       path=myTmpDirEtabm115, verbose=FALSE)
+###Add targets information
+RGcy5$targets <- targetsCy5info
+###Format Reporter identifiers
+RGcy5$genes$ID <- gsub(".+A-MEXP-318\\.", "", RGcy5$genes[, "Reporter identifier"])
+###Check dimensions
+dim(RGcy5)
+@ 
+
+Below is the {\R} code chunk used to check whether all data read 
+is of the correct mode (i.e. numeric values are of mode ``numeric'', and so on).
+
+<<checkMode1, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Check mode of read data for first set of hybridizations
+sapply(RGcy3, mode)
+###Since RGc3$logRatio is character convert to numeric
+RGcy3$logRatio <- apply(RGcy3$logRatio, 2, as.numeric)
+###Check mode of read data for second set of hybridizations
+sapply(RGcy5, mode)
+###Since RGc3$logRatio is character convert to numeric
+RGcy5$logRatio <- apply(RGcy5$logRatio, 2, as.numeric)
+@ 
+
+Below is the {\R} code chunk used to process the microarray feature annotation
+for  the 1.9k MammaPrint array, as it is provided in the ArrayExpress
+database (file \texttt{A-MEXP-318.adf.txt}.
+We will then map the microarray features from thes new array
+to the 231-gene and the 70-gene prognostic signatures.
+We will finally add annotation information to the \Rclass{RGList} 
+objects created above.
+
+<<genes115, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Read genes information for MammaPrint array from the A-MEXP-318.adf.txt
+genes <- read.table(dir(etabm155filesLoc, full.names=TRUE, pattern="A-MEXP-318.adf.txt"),
+		    skip=21, sep="\t", header=TRUE, stringsAsFactors=FALSE)
+###Remove special characters like points in the colums header
+colnames(genes) <- gsub("\\.$","",gsub("\\.\\.",".",colnames(genes)))
+###Use the annotation information previously processed
+str(progSig)
+###Count the features mapped to the 231-gene prognostic signature by accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns231acc)
+###Count the features mapped to the 231-gene prognostic signature by gene symbol
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns231name)
+###Count the features mapped to the 231-gene prognostic signature by gene symbol or accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns231any)
+###Add mapping information for 229 features using both gene symbols and accession numbers
+genes$genes231 <- genes$Comment.AEReporterName %in% progSig$gns231any
+###Count the features mapped to the 70-gene prognostic signature by accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns70acc)
+###Count the features mapped to the 70-gene prognostic signature by gene symbol
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns70name)
+###Count the features mapped to the 70-gene prognostic signature by gene symbol or accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns70any)
+###Add mapping information for 69 features using both gene symbols and accession numbers
+genes$genes70 <- genes$Comment.AEReporterName %in% progSig$gns70any
+###The resulting gene annotation file 
+str(genes)
+###Add original correlation from the van't Veer study
+gns231Cors <- progSig$gns231Cors
+gns231Cors <- gns231Cors[gns231Cors$ID %in% genes$Comment.AEReporterName,]
+###Merge and remove duplicates
+genes <- merge(genes, gns231Cors, all.x=TRUE, all.y=FALSE,
+	       by.x="Comment.AEReporterName", by.y="ID")
+genes <- genes[!duplicated(genes$Reporter.Name),]
+###Check genes
+str(genes)
+@ 
+
+Below is the {\R} code chunk used to add the feature annotation
+the \Rclass{RGList} objects containing the expression data
+(first set of hybridizations).
+
+<<annETABM115, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Compare genes between platform and RGList instances: first set of hybridizations
+if  (nrow(genes)==nrow(RGcy3)) {
+	##Compare the identifiers' order
+	if ( !all(genes$Reporter.Name == RGcy3$genes$ID) ) {
+		##Reorder if needed
+		RGcy3 <- RGcy3[order(RGcy3$genes$ID),]
+		genes <- genes[order(genes$Reporter.Name),]
+		##Check for order AGAIN
+		if ( all(genes$Reporter.Name == RGcy3$genes$ID) ) {
+			##Substitute genes or stop
+			RGcy3$genes <- genes
+		} else { 
+			stop("Wrong gene order, check objects") 
+		}
+	} else { 
+		print("Updating gene annotation")
+		RGcy3$genes <- genes 
+	}
+} else {
+	stop("Wrong number of features, check objects") 
+}
+###Rename the object
+glasRGcy3 <- RGcy3
+@
+
+Below is the {\R} code chunk used to add the feature annotation
+the \Rclass{RGList} objects containing the expression data
+(second set of hybridizations).
+
+<<annETABM115b, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Compare genes between paltform and RGList instances: second set of hybridizations
+if (nrow(genes)==nrow(RGcy5)) {
+	##Compare the identifiers' order
+	if ( !all(genes$Reporter.Name == RGcy5$genes$ID) ) {
+		##Reorder if needed
+		RGcy5 <- RGcy5[order(RGcy5$genes$ID),]
+		genes <- genes[order(genes$Reporter.Name),]
+		##Check for order AGAIN
+		if ( all(genes$Reporter.Name == RGcy5$genes$ID) ) {
+			##Substitute genes or stop
+			RGcy5$genes <- genes
+		} else {
+			stop("Wrong gene order, check objects") 
+		}
+	} else {
+		print("Updating gene annotation")
+		RGcy5$genes <- genes
+	}
+} else {
+	stop("Wrong number of features, check objects") 
+}
+###Rename the object
+glasRGcy5 <- RGcy5
+@ 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Buyse cohort - ArrayExpress E-TABM-77 Series}
+
+The Buyse data set (ArrayExpress  E-TABM-77) accounts for the large 
+European multicenter breast cancer cohort that was used to validate
+the MammaPrint assay \cite{Buyse2006}.
+
+The following chunk of {\R} code was used to download the
+all the files of the ArrayExpress the E-TABM-77 series.
+The files needed to compile this vignette
+and create the \Rpackage{mammaPrintData} \R package are included
+inside the \texttt{inst/extdata} directory.
+
+<<downloadETAB77, eval=FALSE, echo=TRUE, cache=FALSE>>=
+###Create a working directory
+dir.create("../extdata/ETABM77", showWarnings = FALSE)
+###################################################
+###Obtain the data package E-TABM-115 from ArrayExpress
+etabm77 <- getAE("E-TABM-77", type = "full", path="../extdata/ETABM77", extract=FALSE)
+###################################################
+###Save
+save(etabm77,file="../extdata/ETABM77/etabm77.rda")
+@ 
+
+Below is the {\R} code chunk used to process the phenotypic information
+retrieved form ArrayExpress and associated with the E-TABM-77 series
+on \Sexpr{print(myDate)}.
+
+<<readETAB77pheno, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###List the files obtained from ArrayExpress
+etabm77filesLoc <- system.file("extdata/ETABM77", package = "mammaPrintData")
+dir(etabm77filesLoc)
+###Read the phenotypic information from "E-TABM-77.sdrf.txt" 
+targets <- read.table(dir(etabm77filesLoc, full.names=TRUE, pattern="E-TABM-77.sdrf.txt"),
+		      comment.char="", sep="\t", header=TRUE, stringsAsFactors=FALSE)
+###Check and process the phenotypic information: keep non-redundant information
+targets <- targets[, apply(targets, 2, function(x) length(unique(x)) != 1 )]
+###Reorder by file name
+targets <- targets[order(targets$Array.Data.File, decreasing=TRUE),]
+###Remove points in colnames
+colnames(targets) <- gsub("\\.$","",gsub("\\.\\.",".",colnames(targets)))
+###Show the available phenotypic iformation
+str(targets)
+@ 
+
+The Buyse cohort accounts for 307 unique cases, which were analyzed 
+using a dye-swap two-colors design, comparing each sample against 
+the same reference RNA.
+According to ArrayEspress instruction for SDRF files
+(available at \url{http://tab2mage.sourceforge.net/docs/magetab_docs.html}),
+a complete SDRF annotation file consists of a table in which 
+each hybridization channel is represented by an individual row.
+Therefore the complete SDRF annotation files for all hybridizations
+of the Buse cohort should for 1228 total rows:
+307 samples for 2 channels (cy5 and Cy3) for 2 replicated hybridizations (dye-swap).
+As shown below, the \texttt{E-TABM-77.sdrf.txt} file
+currently available from ArrayExpress (\Sexpr{print(myDate)})
+is complete and contains all nececessary information.
+
+An inspection of the information contained in the downloaded SDRF file
+reveales that it contains two row for each hybridization (n=\Sexpr{print(nrow(targets))})
+as expected.
+
+<<checkETAB77sdrf, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Check targets data.frame dimentions
+dim(targets)
+###Count the unique file names
+length(unique(targets$Array.Data.File))
+###Count the number of rows associated with each channel
+table(CHANNEL=targets$Label)
+###Count the number of rows for the reference RNA (named "MRP") in each channel
+table(CHANNEL=targets$Label, REFERENCE=targets$Sample.Name == "MRP")
+###Count the number of distinct RNA analyzed (excluding the refernce RNA)
+sum(REFERENCE=targets$Sample.Name!="MRP")
+###Count the MammaPrint predictions
+table(MAMMAPRINT=targets$Factor.Value.MammaPrint.prediction)
+@ 
+
+The \texttt{E-TABM-77.sdrf.txt} file is therefore valid and can be
+used to assemble the two \Rclass{RGList} objects corresponding 
+to the two sets of dye-swap hybridization that were performed,
+as shown in the {\R} code below.
+
+<<ETAB77rglist, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Create a target directory where the raw data files wil be extracted from the archive
+myTmpDirEtabm77 <- paste(etabm77filesLoc, "/tmp", sep="")
+dir.create(myTmpDirEtabm77)
+###Extract the files in the temporary directory
+unzip(dir(etabm77filesLoc, full.names=TRUE, pattern="E-TABM-77.raw.1.zip"), 
+      exdir = myTmpDirEtabm77)
+###Check whether all files extracted correspond to the targets$Array.Data.File
+all(targets$Array.Data.File %in% dir(myTmpDirEtabm77))
+####Subset targets table extracting the rows for CANCER and the separate by channel
+caList <- !targets$Sample.Name=="MRP"
+targetsCa <- targets[caList,]
+###Cy5 channel
+targetsCa.ch1 <- targetsCa[targetsCa$Label=="Cy5",]
+colnames(targetsCa.ch1) <- paste(colnames(targetsCa.ch1),"Cy5",sep=".")
+###Cy3 channel
+targetsCa.ch2 <- targetsCa[targetsCa$Label=="Cy3",]
+colnames(targetsCa.ch2) <- paste(colnames(targetsCa.ch2),"Cy3", sep=".")
+####Subset targets table extracting the rows for REFERENCE and the separate by channel
+refList <- targets$Sample.Name=="MRP"
+targetsRef <- targets[refList,]
+###Cy5 channel
+targetsRef.ch1 <- targetsRef[targetsRef$Label=="Cy5",]
+colnames(targetsRef.ch1) <- paste(colnames(targetsRef.ch1),"Cy5",sep=".")
+###Cy3 channel
+targetsRef.ch2 <- targetsRef[targetsRef$Label=="Cy3",]
+colnames(targetsRef.ch2) <- paste(colnames(targetsRef.ch2),"Cy3", sep=".")
+@ 
+
+Below is the {\R} code chunk used to assemble the phenotypic information
+associated with the first set of hybridizations.
+
+<<ETAB77rglist2, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Now combine channel information to create the new targets object
+###Here is for the FIRST set of swapped hybridization (keep only useful columns)
+if ( all(targetsCa.ch1$Array.Data.File.Cy5==targetsRef.ch2$Array.Data.File.Cy3) ) {
+	colsSel <- apply(targetsCa.ch1==targetsRef.ch2,2,function(x) sum(x) != length(x) )
+	targetsSwap1 <- cbind(targetsCa.ch1,targetsRef.ch2[,colsSel],stringsAsFactors=FALSE)
+	targetsSwap1 <- targetsSwap1[,apply(targetsSwap1,2,function(x) length(unique(x)) != 1 )]
+	##add Cy5 and Cy3 columns
+	targetsSwap1$Cy5 <- targetsSwap1$Sample.Name
+	targetsSwap1$Cy3 <- "Ref"
+	targetsSwap1 <- targetsSwap1[,order(colnames(targetsSwap1))]
+	##remove dye extension to Scan name
+	colnames(targetsSwap1) <- gsub("\\.Cy5$","",colnames(targetsSwap1))
+	##reorder by sample name in Cy5
+	targetsSwap1 <- 	targetsSwap1[order(targetsSwap1$Cy5),]
+	print("Assembling the targets object for the first set of swapped hybridizations") 
+} else {
+	stop("Check objects") 
+}
+@ 
+
+Below is the {\R} code chunk used to assemble the phenotypic information
+associated with the second set of hybridizations.
+
+<<ETAB77rglist3, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###create new target objects for SECOND set of swapped hybs and keep useful columns
+if ( all(targetsCa.ch2$Array.Data.File.Cy3==targetsRef.ch1$Array.Data.File.Cy5) ) {
+	colsSel <- apply(targetsCa.ch2==targetsRef.ch1,2,function(x) sum(x) != length(x) )
+	targetsSwap2 <- cbind(targetsCa.ch2,targetsRef.ch1[,colsSel],stringsAsFactors=FALSE)
+	targetsSwap2 <- targetsSwap2[,apply(targetsSwap2,2,function(x) length(unique(x)) != 1 )]
+	##add Cy5 and Cy3 columns
+	targetsSwap2$Cy5 <- "Ref"
+	targetsSwap2$Cy3 <- targetsSwap2$Sample.Name
+	targetsSwap2 <- targetsSwap2[,order(colnames(targetsSwap2))]
+	##remove dye extension to Scan name
+	colnames(targetsSwap2) <- gsub("\\.Cy3$","",colnames(targetsSwap2))
+	##reorder by sample name in Cy3
+	targetsSwap2 <- 	targetsSwap2[order(targetsSwap2$Cy3),]
+	print("Assembling the targets object for the second set of swapped hybridizations") 
+} else {
+	stop("Check objects")
+}
+@ 
+
+Below is the {\R} code chunk used to assemble the \Rclass{RGlist} 
+object for the first set of hybridizations of the \texttt{ETABM-77} series.
+
+<<ETAB77rglist4, eval=TRUE, echo=TRUE, cache=FALSE>>=
+##Define the columns which will be read from the raw files selection
+colsList <- list(Rf="Feature Extraction Software:rMedianSignal",
+		 Rb="Feature Extraction Software:rBGMedianSignal",
+		 Gf="Feature Extraction Software:gMedianSignal",
+		 Gb="Feature Extraction Software:gBGMedianSignal",
+		 logRatio="Feature Extraction Software:LogRatio",
+		 logRatioError="Feature Extraction Software:LogRatioError")
+###Swap set 1 has Reference RNA in Cy3 channel
+table(targetsSwap1$Cy3)
+###This creates an instance of class "RGList", selecting specific columns from the raw data:
+RGcy3 <- read.maimages(targetsSwap1$Array.Data.File, source="generic", 
+		       columns=colsList, annotation="Reporter identifier",
+		       path=myTmpDirEtabm77, verbose=FALSE)
+###Add targets information
+RGcy3$targets <- targetsSwap1
+###Add sample names as column names with prefix
+colnames(RGcy3) <- paste("BC",targetsSwap1$Sample.Name,sep=".")
+###Format Reporter identifiers
+RGcy3$genes$ID <- gsub(".+A-MEXP-318\\.", "", RGcy3$genes[, "Reporter identifier"])
+###Check dimensions
+dim(RGcy3)
+@ 
+
+
+Below is the {\R} code chunk used to assemble the \Rclass{RGlist} 
+object for the second set of hybridizations of the \texttt{ETABM-77} series.
+
+<<ETAB77rglist5, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###This creates an instance of class "RGList", selecting specific columns from the raw data:
+RGcy5 <- read.maimages(targetsSwap2$Array.Data.File, source="generic",
+		       columns=colsList, annotation="Reporter identifier",
+		       path=myTmpDirEtabm77, verbose=FALSE)
+###Swap set 2 has Reference RNA in Cy5 channel
+table(targetsSwap2$Cy5)
+###Add targets information
+RGcy5$targets <- targetsSwap2
+###Format Reporter identifiers
+RGcy5$genes$ID <- gsub(".+A-MEXP-318\\.", "", RGcy5$genes[, "Reporter identifier"])
+###Add sample names as column names with prefix
+colnames(RGcy5) <- paste("BC",targetsSwap2$Sample.Name,sep=".")
+###Check dimensions
+dim(RGcy5)
+@ 
+
+Below is the {\R} code to check whether all data read is of teh correct mode
+(i.e. numeric values are of mode ``numeric'', and so on)
+
+<<checkMode2, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Check mode of read data for first set of hybridizations
+sapply(RGcy3, mode)
+###Since RGc3$logRatio is character convert to numeric
+RGcy3$logRatio <- apply(RGcy3$logRatio, 2, as.numeric)
+###Check mode of read data for second set of hybridizations
+sapply(RGcy5, mode)
+###Since RGc3$logRatio is character convert to numeric
+RGcy5$logRatio <- apply(RGcy5$logRatio, 2, as.numeric)
+@ 
+
+
+Below is the {\R} code chunkto process the microarray feature annotation
+for  the 1.9k MammaPrint array, as it is provided in the ArrayExpress
+database (file \texttt{A-MEXP-318.adf.txt}.
+We will then map the microarray features from thes new array
+to the 231-gene and the 70-gene prognostic signatures.
+We will finally add annotation information to the \Rclass{RGList} 
+objects created above.
+
+<<genesETABM77, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Read genes information for MammaPrint array from the A-MEXP-318.adf.txt
+genes <- read.table(dir(etabm77filesLoc, full.names=TRUE, pattern="A-MEXP-318.adf.txt"),
+		    comment.char="", skip=21, sep="\t", header=TRUE, stringsAsFactors=FALSE)
+###Remove special characters like points in the colums header
+colnames(genes) <- gsub("\\.$","",gsub("\\.\\.",".",colnames(genes)))
+###Use the annotation information previously processed
+str(progSig)
+###Count the features mapped to the 231-gene prognostic signature by accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns231acc)
+###Count the features mapped to the 231-gene prognostic signature by gene symbol
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns231name)
+###Count the features mapped to the 231-gene prognostic signature by gene symbol or accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns231any)
+###Add mapping information for 229 features using both gene symbols and accession numbers
+genes$genes231 <- genes$Comment.AEReporterName %in% progSig$gns231any
+###Count the features mapped to the 70-gene prognostic signature by accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns70acc)
+###Count the features mapped to the 70-gene prognostic signature by gene symbol
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns70name)
+###Count the features mapped to the 70-gene prognostic signature by gene symbol or accession number
+apply(genes, 2, function(x, y) { sum(unique(x) %in% y) }, y = progSig$gns70any)
+###Add mapping information for 229 features using both gene symbols and accession numbers
+genes$genes70 <- genes$Comment.AEReporterName %in% progSig$gns70any
+###The resulting gene annotation file 
+str(genes)
+###Add original correlation from the van't Veer study
+gns231Cors <- progSig$gns231Cors
+gns231Cors <- gns231Cors[gns231Cors$ID %in% genes$Comment.AEReporterName,]
+###Merge and remove duplicates
+genes <- merge(genes, gns231Cors, all.x=TRUE, all.y=FALSE,
+	       by.x="Comment.AEReporterName", by.y="ID")
+genes <- genes[!duplicated(genes$Reporter.Name),]
+###Check genes
+str(genes)
+@ 
+
+
+Below is the {\R} code chunk used to add the feature annotation
+the \Rclass{RGList} objects containing the expression data
+(first set of hybridizations).
+
+<<annETABM77, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Compare genes between paltform and RGList instances: first set of hybridizations
+if (nrow(genes)==nrow(RGcy3)) {
+	##Compare the identifiers' order
+	if ( !all(genes$Reporter.Name == RGcy3$genes$ID) ) {
+		##Reorder if needed
+		RGcy3 <- RGcy3[order(RGcy3$genes$ID),]
+		genes <- genes[order(genes$Reporter.Name),]
+		##check for order AGAIN
+		if ( all(genes$Reporter.Name == RGcy3$genes$ID) ) {
+			##Substitute genes or stop
+			RGcy3$genes <- genes
+		} else { 
+			stop("Wrong gene order, check objects") 
+		}
+	} else { 
+		print("Updating gene annotation")
+		RGcy3$genes <- genes 
+	}
+} else {
+	stop("Wrong number of features, check objects") 
+}
+###Rename
+buyseRGcy3 <- RGcy3
+@ 
+
+Below is the {\R} code chunk used to add the feature annotation
+the \Rclass{RGList} objects containing the expression data
+(second set of hybridizations).
+
+<<annETABM77b, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Compare genes between paltform and RGList instances: second set of hybridizations
+if (nrow(genes)==nrow(RGcy5)) {
+	##Compare the identifiers' order
+	if ( !all(genes$Reporter.Name == RGcy5$genes$ID) ) {
+		##Reorder if needed
+		RGcy5 <- RGcy5[order(RGcy5$genes$ID),]
+		genes <- genes[order(genes$Reporter.Name),]
+		##check for order AGAIN
+		if ( all(genes$Reporter.Name == RGcy5$genes$ID) ) {
+			##Substitute genes or stop
+			RGcy5$genes <- genes
+		} else {
+			stop("Wrong gene order, check objects") 
+		}
+	} else {
+		print("Updating gene annotation")
+		RGcy5$genes <- genes
+	}
+} else {
+	stop("Wrong number of features, check objects") 
+}
+###Rename
+buyseRGcy5 <- RGcy5
+@ 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Phenotypic information processing }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Glas cohort: patients' phenotype curation}
+
+The chunk of {\R} code below was used to process the clinical information
+associated with the 162 patients of the ArrayExpress ``E-TABM-115'' series, 
+and define the final ``good'' and ``bad'' prognosis patients groups, 
+as well as other end-points that were investigated in the our study. 
+To this end we first identified the putative 78 patients from the van't Veer 
+cohort \cite{van't2002}, and the 84 cases from the Van de Vijver cohort \cite{Vijver2002}
+that were combined to assemble the final Glas data set.
+Since this information was not provided with the ArrayExpress ``E-TABM-115'' series, 
+we analyzed the raw data hybridization file names, and used the 3-digits suffix code 
+present in exactly 84 files, as follows:
+
+<<phenoGlasOriginalCohorts, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Retrieve the phenotypic information from one of the RGList intances
+phenoGlasCy3 <- glasRGcy3$targets
+phenoGlasCy5 <- glasRGcy5$targets
+###Identification of the 78 samples from van't Veer and the 84 from VanDeVijver
+table(gsub(".+_", "", phenoGlasCy3$Scan.Name) == gsub(".+_", "", phenoGlasCy5$Scan.Name))
+##################################################
+###There are 78 hybridizations with 1-digit suffixes, and 84 of them with 3-digit suffixes
+table(nchar(gsub(".+_", "", phenoGlasCy5$Scan.Name)))
+table(nchar(gsub(".+_", "", phenoGlasCy3$Scan.Name)))
+###Use the hybridization file names suffixes to define the putative cohort of origin: FIRST SET
+phenoGlasCy5$putativeCohort <- factor(nchar(gsub(".+_", "", phenoGlasCy5$Scan.Name)))
+levels(phenoGlasCy5$putativeCohort) <- c("putativeVantVeer", "putativeVanDeVijver")
+###Use the hybridization file names suffixes to define the putative cohort of origin: SECOND SET
+phenoGlasCy3$putativeCohort <- factor(nchar(gsub(".+_", "", phenoGlasCy3$Scan.Name)))
+levels(phenoGlasCy3$putativeCohort) <- c("putativeVantVeer", "putativeVanDeVijver")
+###Show counts FIRST SET
+table(phenoGlasCy5$putativeCohort)
+##################################################
+###Show counts SECOND SET
+table(phenoGlasCy3$putativeCohort)
+@ 
+
+We subsequently processed the ``Factor.Value.overall\_survival'' character strings 
+contained in the ``E-TABM-115'' SDRF table to define the actual overall survival (OS) time, 
+the OS event status, and the 10-year survival status for each patient, as shown below.
+This was possible only for the set of hybridization for which the clinical information 
+was provided in ArrayExpress (see \Robject{glasRGcy5\$targets} below).
+
+<<osGlas, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Process the overall survival (OS) character strings  and make numeric
+OS <- gsub("\\s.+", "", phenoGlasCy5$Factor.Value.overall_survival)
+phenoGlasCy5$OS <- as.numeric(OS)
+####Process OS event and make numeric: missing data, labeled with "n/a" strings are turned into NA
+phenoGlasCy5$OSevent <- as.numeric(phenoGlasCy5$Factor.Value.Event_Death)
+###Count missing information by counting the number of NA
+sum(is.na(phenoGlasCy5$OSevent))
+####Create binary OS at 10 years groups
+phenoGlasCy5$TenYearSurv <- phenoGlasCy5$OS < 10 & phenoGlasCy5$OSevent == 1
+phenoGlasCy5$TenYearSurv[is.na(phenoGlasCy5$OSevent)] <- NA
+@ 
+
+The overall survival information summary for the Glas cohort is shown below:
+
+<<print, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Count OS events
+table(phenoGlasCy5$OSevent)
+###Count survival at 10 years status
+table(phenoGlasCy5$TenYearSurv)
+@ 
+
+
+We subsequently processed the 
+``Factor.Value.Time\_to\_development\_of\_distant\_metastases'' 
+character strings contained in the ``E-TABM-115'' SDRF table to define the actual 
+time to metastasis (TTM) time, the TTM event status, and the 5-year distant recurrence
+status for each patient, as shown below.
+This was possible only for the set of hybridization for which the clinical information 
+was provided in ArrayExpress (see \Robject{glasRGcy5\$targets} below).
+
+<<ttmGlas, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Process time metastases (TTM) character strings and make numeric
+###Note that missing data, labeled with "n/a" strings are turned into NA
+TTM <- phenoGlasCy5$Factor.Value.Time_to_development_of_distant_metastases
+phenoGlasCy5$TTM <- as.numeric(gsub("\\s.+", "", TTM))
+####Process TTM event and make numeric
+phenoGlasCy5$TTMevent <- as.numeric(phenoGlasCy5$Factor.Value.Event_distant_metastases)
+###Use follow-up time from OS as TTM for patients withouth metastasis event
+phenoGlasCy5$TTM[is.na(phenoGlasCy5$TTM)] <- phenoGlasCy5$OS[is.na(phenoGlasCy5$TTM)]
+####Create binary TTM at 5 years groups
+phenoGlasCy5$FiveYearMetastasis <- phenoGlasCy5$TTM < 5 & phenoGlasCy5$TTMevent == 1
+@
+
+The time to metastasis information summary, and the five year distant recurrence 
+status, which corresponds to the ``good'' and ``bad'' prognosis groups used 
+in the Glas study, are shown below.
+
+<<prognosisGroupsGlas, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Count TTM events
+table(phenoGlasCy5$TTMevent)
+###Count metastasis events by putative cohort of origin
+table(phenoGlasCy5$FiveYearMetastasis, phenoGlasCy5$putativeCohort)
+@ 
+
+We finally replaced the processed phenotypic information in the 
+corresponding \Rclass{RGList-class} instances:
+
+<<substitutePhenoGlas, eval=FALSE, echo=TRUE, cache=TRUE>>=
+###Substitute in the RGLists
+glasRGcy3$targets <- phenoGlasCy3
+glasRGcy5$targets <- phenoGlasCy5
+@ 
+
+Below is the {\R} code chunk used to save the final 
+\Rclass{RGList} objects.
+
+<<finalETABM115save, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Remove temporary folder and its content and temporary objects
+file.remove(dir(myTmpDirEtabm115, full.names=TRUE))
+file.remove(myTmpDirEtabm115)
+###Save the final ExpressionSet object
+dataDirLoc <- system.file("data", package = "mammaPrintData")
+save(glasRGcy5, glasRGcy3, file=paste(dataDirLoc, "/glasRG.rda", sep=""))
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\subsection{Buyse cohort: patients' phenotype curation}
+
+The chunk of {\R} code below was used to process the clinical information
+associated with the 307 analyzed patients that were retrieved from the 
+ArrayExpress ``E-TABM-77'' series, to define the final ``good'' and ``bad'' 
+prognosis patients groups, as well as other end-points that were investigated 
+in the present study. 
+We hence processed the ``Factor.Value.SurvivalTime'' character strings 
+contained in the ``E-TABM-77'' SDRF table to define the actual 
+overall survival (OS) time, the OS event status, and the  10-year survival group
+for each patient, as shown below
+
+<<phenoBuyseOriginalCohorts, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Retrieve the phenotypic information from one of the RGList intances
+phenoBuyseCy3 <- buyseRGcy3$targets
+phenoBuyseCy5 <- buyseRGcy5$targets
+###Process overall survival (OS) character strings and make numeric: BOTH SETS
+OScy5 <- phenoBuyseCy5$Factor.Value.SurvivalTime
+phenoBuyseCy5$OS <- as.numeric(gsub("\\s.+", "", OScy5))
+OScy3 <- phenoBuyseCy3$Factor.Value.SurvivalTime
+phenoBuyseCy3$OS <- as.numeric(gsub("\\s.+", "", OScy3))
+###Create the OS event by processing the OS character string with grep
+###and the "plus" pattern making it a numeric vector: BOTH SETS
+phenoBuyseCy5$OSevent <- 1*( ! 1:nrow(phenoBuyseCy5) %in% grep("plus", OScy5))
+phenoBuyseCy3$OSevent <- 1*( ! 1:nrow(phenoBuyseCy3) %in% grep("plus", OScy3))
+####Create binary OS at 10 years groups: BOTH SETS
+phenoBuyseCy5$TenYearSurv <- phenoBuyseCy5$OS < 10 & phenoBuyseCy5$OSevent == 1
+phenoBuyseCy3$TenYearSurv <- phenoBuyseCy3$OS < 10 & phenoBuyseCy3$OSevent == 1
+@ 
+
+The overall survival information summary for the Buyse cohort is shown below:
+
+<<osBuyse2, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Count OS survival events: BOTH SETS
+table(phenoBuyseCy5$OSevent)
+table(phenoBuyseCy3$OSevent)
+###Count survival at 10 years status: BOTH SETS
+table(phenoBuyseCy5$TenYearSurv)
+table(phenoBuyseCy3$TenYearSurv)
+@ 
+
+
+We subsequently processed the ``Factor.Value.Disease.Free.Survival'' 
+character strings  contained in the ``E-TABM-77'' SDRF table to define the actual 
+disease free survival (DFS) time, and the DFS event status for each patient, as shown below.
+
+<<dfsBuyse, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Process disease free survival (DFS) character strings and make numeric: BOTH SETS
+DFScy5 <- phenoBuyseCy5$Factor.Value.Disease.Free.Survival
+phenoBuyseCy5$DFS <- as.numeric(gsub("\\s.+", "", DFScy5))
+DFScy3 <- phenoBuyseCy3$Factor.Value.Disease.Free.Survival
+phenoBuyseCy3$DFS <- as.numeric(gsub("\\s.+", "", DFScy3))
+###Create the DFS event by processing the DFS character string with grep
+###and the "plus" pattern making it a numeric vector: BOTH SETS
+phenoBuyseCy5$DFSevent <- 1*( ! 1:nrow(phenoBuyseCy5) %in% grep("plus", DFScy5))
+phenoBuyseCy3$DFSevent <- 1*( ! 1:nrow(phenoBuyseCy3) %in% grep("plus", DFScy3))
+####Create binary DFS at 5 years groups:BOTH SETS
+phenoBuyseCy5$FiveYearDiseaseFree <- (phenoBuyseCy5$DFS < 5 
+				      & phenoBuyseCy5$DFSevent == 1)
+phenoBuyseCy3$FiveYearDiseaseFree <- (phenoBuyseCy3$DFS < 5 
+				      & phenoBuyseCy3$DFSevent == 1)
+@
+
+
+The disease free survival information summary for the Buyse cohort is shown below:
+
+<<dfsBuyse2, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Count DFS survival events: BOTH SETS
+table(phenoBuyseCy5$DFSevent)
+table(phenoBuyseCy3$DFSevent)
+###Count recurrence at 5 years status: BOTH SETS
+table(phenoBuyseCy5$FiveYearDiseaseFree)
+table(phenoBuyseCy3$FiveYearDiseaseFree)
+@ 
+
+
+We subsequently processed the ``Factor.Value.DistantMetastasis.Free.Survival'' 
+character strings  contained in the ``E-TABM-77'' SDRF table to define the actual 
+time to metastasis (TTM) time, the TTM event status, and the 5-year recurrence status
+for each patient, as shown below.
+
+<<ttmBuyse, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Process time metastases (TTM) character strings and make numeric: BOTH SETS
+TTMcy5 <- phenoBuyseCy5$Factor.Value.DistantMetastasis.Free.Survival
+phenoBuyseCy5$TTM <- as.numeric(gsub("\\s.+", "", TTMcy5))
+TTMcy3 <- phenoBuyseCy3$Factor.Value.DistantMetastasis.Free.Survival
+phenoBuyseCy3$TTM <- as.numeric(gsub("\\s.+", "", TTMcy3))
+###Create the TTM event by processing the TTM character string with grep
+###and the "plus" pattern making it a numeric vector: BOTH SETS
+phenoBuyseCy5$TTMevent <- 1*( ! 1:nrow(phenoBuyseCy5) %in% grep("plus", TTMcy5))
+phenoBuyseCy3$TTMevent <- 1*( ! 1:nrow(phenoBuyseCy3) %in% grep("plus", TTMcy3))
+####Create binary TTM at 5 years groups: BOTH SETS
+phenoBuyseCy5$FiveYearRecurrence <- (phenoBuyseCy5$TTM < 5 
+				     & phenoBuyseCy5$TTMevent == 1)
+phenoBuyseCy3$FiveYearRecurrence <- (phenoBuyseCy3$TTM < 5 
+				     & phenoBuyseCy3$TTMevent == 1)
+@
+
+
+The time to metastasis information summary, and the five year distant recurrence status, 
+which corresponds to the ``good'' and ``bad'' prognosis groups used in the Buyse study,
+are shown below.
+
+<<prognosisGroupsBuyse, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Count TTM survival events: BOTH SETS
+table(phenoBuyseCy5$TTMevent)
+table(phenoBuyseCy3$TTMevent)
+###Count recurrence at 5 years status: BOTH SETS
+table(phenoBuyseCy5$FiveYearRecurrence)
+table(phenoBuyseCy3$FiveYearRecurrence)
+###Count metastasis events by European center: BOTH SETS
+table(phenoBuyseCy5$FiveYearRecurrence, phenoBuyseCy5$Characteristics.BioSourceProvider)
+table(phenoBuyseCy3$FiveYearRecurrence, phenoBuyseCy3$Characteristics.BioSourceProvider)
+@ 
+
+
+We finally identified the patients that were excluded from the analysis
+in the original study by Buyse and colleagues \cite{Buyse2006}
+beacuse of missing clinical information.
+
+<<excludeBuyse, eval=FALSE, echo=TRUE, cache=FALSE>>=
+###Exclude patients with missing ER status: BOTH SETSXS
+phenoBuyseCy5$toExclude <- phenoBuyseCy5$Factor.Value.ER.status=="unknown"
+phenoBuyseCy3$toExclude <- phenoBuyseCy3$Factor.Value.ER.status=="unknown"
+@ 
+
+
+We finally replaced the processed phenotypic information in the 
+corresponding \Rclass{RGList-class} instances:
+
+<<substitutePhenoBuyse, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Substitute in the RGLists
+buyseRGcy3$targets <- phenoBuyseCy3
+buyseRGcy5$targets <- phenoBuyseCy5
+@ 
+
+
+Below is the {\R} code chunk used to save the final 
+\Rclass{RGList} objects.
+
+<<finalETABM77save, eval=TRUE, echo=TRUE, cache=FALSE>>=
+###Remove temporary folder and its content and temporary objects
+file.remove(dir(myTmpDirEtabm77, full.names=TRUE))
+file.remove(myTmpDirEtabm77)
+###Save RGList instances for later use
+dataDirLoc <- system.file("data", package = "mammaPrintData")
+save(buyseRGcy5, buyseRGcy3, file=paste(dataDirLoc, "/buyseRG.rda", sep=""))
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{System Information}
+Session information:
+
+<<sessioInfo, echo=TRUE, eval=TRUE, cache=FALSE, results=tex>>=
+toLatex(sessionInfo())
+@ 
+
+\pagebreak
+\section{References}
+   \bibliographystyle{plain}
+   \bibliography{./mammaPrintData}
+
+   
+\end{document}
+
+
