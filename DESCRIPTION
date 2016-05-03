@@ -2,7 +2,7 @@ Package: mammaPrintData
 Type: Package
 Title: RGLists from the Glas and Buyse breast cancer
       studies
-Version: 1.8.0
+Version: 1.9.0
 Date: 2013-05-13
 Description: Gene expression data for the two breast cancer cohorts published by Glas and Buyse in 2006
 biocViews: ExperimentData, ExpressionData, CancerData, BreastCancerData, MicroarrayData, TwoChannelData
