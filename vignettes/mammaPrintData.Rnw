@@ -410,12 +410,6 @@ using the raw gene expression data contained in the compressed
 archive \texttt{E-TABM-115.raw.1.zip} downloaded from ArrayExpress.
 
 <<ETAB115rglist, eval=TRUE, echo=TRUE, cache=FALSE>>=
-### ###Create a target directory where the raw data files wil be extracted from the archive
-### myTmpDirEtabm115 <- paste(etabm155filesLoc, "/tmp", sep="")
-### dir.create(myTmpDirEtabm115)
-### ###Extract the files in the temporary directory
-### unzip(dir(etabm155filesLoc, full.names=TRUE, pattern="E-TABM-115.raw.1.zip"), 
-###       exdir = myTmpDirEtabm115)
 ###List files for E-TABM-115 experiment
 etabm155filesLoc <- system.file("extdata/ETABM115", package = "mammaPrintData")
 etabm155files <- list.files(etabm155filesLoc,  pattern="^US")
@@ -671,12 +665,6 @@ to the two sets of dye-swap hybridization that were performed,
 as shown in the {\R} code below.
 
 <<ETAB77rglist, eval=TRUE, echo=TRUE, cache=FALSE>>=
-### ###Create a target directory where the raw data files wil be extracted from the archive
-### myTmpDirEtabm77 <- paste(etabm77filesLoc, "/tmp", sep="")
-### dir.create(myTmpDirEtabm77)
-### ###Extract the files in the temporary directory
-### unzip(dir(etabm77filesLoc, full.names=TRUE, pattern="E-TABM-77.raw.1.zip"), 
-###       exdir = myTmpDirEtabm77)
 ###List files for E-TABM-77 experiment
 etabm77filesLoc <- system.file("extdata/ETABM77", package = "mammaPrintData")
 etabm77files <- list.files(etabm77filesLoc,  pattern="^US")
@@ -1037,9 +1025,6 @@ Below is the {\R} code chunk used to save the final
 \Rclass{RGList} objects.
 
 <<finalETABM115save, eval=FALSE, echo=TRUE, cache=FALSE>>=
-### ###Remove temporary folder and its content and temporary objects
-### file.remove(dir(myTmpDirEtabm115, full.names=TRUE))
-### file.remove(myTmpDirEtabm115)
 ###Save the final ExpressionSet object: not run
 dataDirLoc <- system.file("data", package = "mammaPrintData")
 save(glasRGcy5, glasRGcy3, file=paste(dataDirLoc, "/glasRG.rda", sep=""))
@@ -1188,9 +1173,6 @@ Below is the {\R} code chunk used to save the final
 \Rclass{RGList} objects.
 
 <<finalETABM77save, eval=FALSE, echo=TRUE, cache=FALSE>>=
-### ###Remove temporary folder and its content and temporary objects
-### file.remove(dir(myTmpDirEtabm77, full.names=TRUE))
-### file.remove(myTmpDirEtabm77)
 ###Save RGList instances for later use: not run
 dataDirLoc <- system.file("data", package = "mammaPrintData")
 save(buyseRGcy5, buyseRGcy3, file=paste(dataDirLoc, "/buyseRG.rda", sep=""))
