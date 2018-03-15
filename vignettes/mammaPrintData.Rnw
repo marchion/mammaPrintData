@@ -215,7 +215,8 @@ The following code chunk was not run to compile this vignette, which was prepare
 using the local copies of the data stored in the \texttt{inst/extdata} directory.
 
 <<get70genes, eval=FALSE, echo=TRUE, cache=FALSE>>=
-###Create a working directory
+###Chunk not executed: files are already included
+### Shown here just to show the source of the data
 dir.create("../extdata/seventyGenes", showWarnings = TRUE, recursive = TRUE)
 ###Define the url for Supplementary data on the Nature Website
 url <- "http://www.nature.com/nature/journal/v415/n6871/extref/415530a-s9.xls"
@@ -231,8 +232,7 @@ Excel file and create the corresponding data.frame containing the features annot
 ###Load the library to process Excell files
 require(gdata)
 ###Read the Excel file with the 70-genes signature information for van't Veer dataset
-myFile <- system.file("extdata/seventyGene", "415530a-s9.xls", 
-		      package = "mammaPrintData")
+myFile <- system.file("./extdata/seventyGene", "415530a-s9.xls", package = "mammaPrintData")
 gns231 <- read.xls(myFile, skip=0, header=TRUE, stringsAsFactors=FALSE)
 ###Remove special characters in the colums header
 ###These are due to white spaces present in the Excel file
@@ -306,6 +306,8 @@ and create the \Rpackage{mammaPrintData} \R package are included
 inside the \texttt{inst/extdata} directory.
 
 <<getETAB115, eval=FALSE, echo=TRUE, cache=FALSE>>=
+###Chunk nor executed: files are already included in the package
+###This chunk is just to show the source of the data
 ###Load the ArrayExpress library
 require(ArrayExpress)
 ###Create a working directory
@@ -325,7 +327,7 @@ on \Sexpr{print(myDate)}
 require(Biobase)
 ###List the files obtained from ArrayExpress
 etabm155filesLoc <- system.file("extdata/ETABM115", package = "mammaPrintData")
-dir(etabm155filesLoc)
+head(dir(etabm155filesLoc))
 ###Read the phenotypic information from "E-TABM-115.sdrf.txt" 
 targets <- read.table(dir(etabm155filesLoc, full.names=TRUE, pattern="E-TABM-115.sdrf.txt"),
 		      comment.char="", sep="\t", header=TRUE, stringsAsFactors=FALSE)
@@ -408,14 +410,19 @@ using the raw gene expression data contained in the compressed
 archive \texttt{E-TABM-115.raw.1.zip} downloaded from ArrayExpress.
 
 <<ETAB115rglist, eval=TRUE, echo=TRUE, cache=FALSE>>=
-###Create a target directory where the raw data files wil be extracted from the archive
-myTmpDirEtabm115 <- paste(etabm155filesLoc, "/tmp", sep="")
-dir.create(myTmpDirEtabm115)
-###Extract the files in the temporary directory
-unzip(dir(etabm155filesLoc, full.names=TRUE, pattern="E-TABM-115.raw.1.zip"), 
-      exdir = myTmpDirEtabm115)
-###Check whether all files extracted correspond to the targets$Array.Data.File
-all(targets$Array.Data.File %in% dir(myTmpDirEtabm115))
+### ###Create a target directory where the raw data files wil be extracted from the archive
+### myTmpDirEtabm115 <- paste(etabm155filesLoc, "/tmp", sep="")
+### dir.create(myTmpDirEtabm115)
+### ###Extract the files in the temporary directory
+### unzip(dir(etabm155filesLoc, full.names=TRUE, pattern="E-TABM-115.raw.1.zip"), 
+###       exdir = myTmpDirEtabm115)
+###List files for E-TABM-115 experiment
+etabm155filesLoc <- system.file("extdata/ETABM115", package = "mammaPrintData")
+etabm155files <- list.files(etabm155filesLoc,  pattern="^US")
+###Check whether all available files correspond to the targets$Array.Data.File
+all(paste(targets$Array.Data.File, ".gz", sep="") %in% etabm155files)
+###Check whether they are ordered in the same way
+all(paste(targets$Array.Data.File, ".gz", sep="") == etabm155files)
 ###Load the required library
 require(limma)
 ###Define the columns which will be read from the raw files selection
@@ -434,9 +441,10 @@ dim(targetsCy5info)
 ###The two sets of hybridizations above should be mutually exclusive
 all(targetsCy3info$Array.Data.File != targetsCy5info$Array.Data.File)
 ###Create an "RGList" using specific columns for the first set of swapped hybridizations:
-RGcy3 <- read.maimages(targetsCy3info$Array.Data.File, source="generic", 
+RGcy3 <- read.maimages(paste(targetsCy3info$Array.Data.File,  ".gz", sep=""),
+		       source="generic", 
 		       columns=colsList, annotation="Reporter identifier",
-		       path=myTmpDirEtabm115, verbose=FALSE)
+		       path=etabm155filesLoc, verbose=FALSE)
 ###Add targets information
 RGcy3$targets <- targetsCy3info
 ###Format Reporter identifiers
@@ -444,9 +452,10 @@ RGcy3$genes$ID <- gsub(".+A-MEXP-318\\.", "", RGcy3$genes[, "Reporter identifier
 ###Check dimensions
 dim(RGcy3)
 ###Create an "RGList" using specific columns for the second set of swapped hybridizations:
-RGcy5 <- read.maimages(targetsCy5info$Array.Data.File, source="generic",
+RGcy5 <- read.maimages(paste(targetsCy3info$Array.Data.File,  ".gz", sep=""),
+		       source="generic",
 		       columns=colsList, annotation="Reporter identifier",
-		       path=myTmpDirEtabm115, verbose=FALSE)
+		       path=etabm155filesLoc, verbose=FALSE)
 ###Add targets information
 RGcy5$targets <- targetsCy5info
 ###Format Reporter identifiers
@@ -591,7 +600,8 @@ and create the \Rpackage{mammaPrintData} \R package are included
 inside the \texttt{inst/extdata} directory.
 
 <<downloadETAB77, eval=FALSE, echo=TRUE, cache=FALSE>>=
-###Create a working directory
+###Chunk not executed: files are already included in the package
+###This chunk is just to show the source of the data
 dir.create("../extdata/ETABM77", showWarnings = FALSE)
 ###################################################
 ###Obtain the data package E-TABM-115 from ArrayExpress
@@ -608,7 +618,7 @@ on \Sexpr{print(myDate)}.
 <<readETAB77pheno, eval=TRUE, echo=TRUE, cache=FALSE>>=
 ###List the files obtained from ArrayExpress
 etabm77filesLoc <- system.file("extdata/ETABM77", package = "mammaPrintData")
-dir(etabm77filesLoc)
+head(dir(etabm77filesLoc))
 ###Read the phenotypic information from "E-TABM-77.sdrf.txt" 
 targets <- read.table(dir(etabm77filesLoc, full.names=TRUE, pattern="E-TABM-77.sdrf.txt"),
 		      comment.char="", sep="\t", header=TRUE, stringsAsFactors=FALSE)
@@ -661,14 +671,19 @@ to the two sets of dye-swap hybridization that were performed,
 as shown in the {\R} code below.
 
 <<ETAB77rglist, eval=TRUE, echo=TRUE, cache=FALSE>>=
-###Create a target directory where the raw data files wil be extracted from the archive
-myTmpDirEtabm77 <- paste(etabm77filesLoc, "/tmp", sep="")
-dir.create(myTmpDirEtabm77)
-###Extract the files in the temporary directory
-unzip(dir(etabm77filesLoc, full.names=TRUE, pattern="E-TABM-77.raw.1.zip"), 
-      exdir = myTmpDirEtabm77)
-###Check whether all files extracted correspond to the targets$Array.Data.File
-all(targets$Array.Data.File %in% dir(myTmpDirEtabm77))
+### ###Create a target directory where the raw data files wil be extracted from the archive
+### myTmpDirEtabm77 <- paste(etabm77filesLoc, "/tmp", sep="")
+### dir.create(myTmpDirEtabm77)
+### ###Extract the files in the temporary directory
+### unzip(dir(etabm77filesLoc, full.names=TRUE, pattern="E-TABM-77.raw.1.zip"), 
+###       exdir = myTmpDirEtabm77)
+###List files for E-TABM-77 experiment
+etabm77filesLoc <- system.file("extdata/ETABM77", package = "mammaPrintData")
+etabm77files <- list.files(etabm77filesLoc,  pattern="^US")
+###Check whether all available files correspond to the targets$Array.Data.File
+all(paste(targets$Array.Data.File, ".gz", sep="") %in% etabm77files)
+###Check whether they are ordered in the same way
+all(paste(targets$Array.Data.File, ".gz", sep="") == etabm77files)
 ####Subset targets table extracting the rows for CANCER and the separate by channel
 caList <- !targets$Sample.Name=="MRP"
 targetsCa <- targets[caList,]
@@ -750,9 +765,10 @@ colsList <- list(Rf="Feature Extraction Software:rMedianSignal",
 ###Swap set 1 has Reference RNA in Cy3 channel
 table(targetsSwap1$Cy3)
 ###This creates an instance of class "RGList", selecting specific columns from the raw data:
-RGcy3 <- read.maimages(targetsSwap1$Array.Data.File, source="generic", 
+RGcy3 <- read.maimages(paste(targetsSwap1$Array.Data.File, ".gz",  sep=""),
+		       source="generic", 
 		       columns=colsList, annotation="Reporter identifier",
-		       path=myTmpDirEtabm77, verbose=FALSE)
+		       path=etabm77filesLoc, verbose=FALSE)
 ###Add targets information
 RGcy3$targets <- targetsSwap1
 ###Add sample names as column names with prefix
@@ -769,9 +785,10 @@ object for the second set of hybridizations of the \texttt{ETABM-77} series.
 
 <<ETAB77rglist5, eval=TRUE, echo=TRUE, cache=FALSE>>=
 ###This creates an instance of class "RGList", selecting specific columns from the raw data:
-RGcy5 <- read.maimages(targetsSwap2$Array.Data.File, source="generic",
+RGcy5 <- read.maimages(paste(targetsSwap1$Array.Data.File, ".gz",  sep=""), 
+		       source="generic",
 		       columns=colsList, annotation="Reporter identifier",
-		       path=myTmpDirEtabm77, verbose=FALSE)
+		       path=etabm77filesLoc, verbose=FALSE)
 ###Swap set 2 has Reference RNA in Cy5 channel
 table(targetsSwap2$Cy5)
 ###Add targets information
@@ -1019,11 +1036,11 @@ glasRGcy5$targets <- phenoGlasCy5
 Below is the {\R} code chunk used to save the final 
 \Rclass{RGList} objects.
 
-<<finalETABM115save, eval=TRUE, echo=TRUE, cache=FALSE>>=
-###Remove temporary folder and its content and temporary objects
-file.remove(dir(myTmpDirEtabm115, full.names=TRUE))
-file.remove(myTmpDirEtabm115)
-###Save the final ExpressionSet object
+<<finalETABM115save, eval=FALSE, echo=TRUE, cache=FALSE>>=
+### ###Remove temporary folder and its content and temporary objects
+### file.remove(dir(myTmpDirEtabm115, full.names=TRUE))
+### file.remove(myTmpDirEtabm115)
+###Save the final ExpressionSet object: not run
 dataDirLoc <- system.file("data", package = "mammaPrintData")
 save(glasRGcy5, glasRGcy3, file=paste(dataDirLoc, "/glasRG.rda", sep=""))
 @
@@ -1170,11 +1187,11 @@ buyseRGcy5$targets <- phenoBuyseCy5
 Below is the {\R} code chunk used to save the final 
 \Rclass{RGList} objects.
 
-<<finalETABM77save, eval=TRUE, echo=TRUE, cache=FALSE>>=
-###Remove temporary folder and its content and temporary objects
-file.remove(dir(myTmpDirEtabm77, full.names=TRUE))
-file.remove(myTmpDirEtabm77)
-###Save RGList instances for later use
+<<finalETABM77save, eval=FALSE, echo=TRUE, cache=FALSE>>=
+### ###Remove temporary folder and its content and temporary objects
+### file.remove(dir(myTmpDirEtabm77, full.names=TRUE))
+### file.remove(myTmpDirEtabm77)
+###Save RGList instances for later use: not run
 dataDirLoc <- system.file("data", package = "mammaPrintData")
 save(buyseRGcy5, buyseRGcy3, file=paste(dataDirLoc, "/buyseRG.rda", sep=""))
 @
